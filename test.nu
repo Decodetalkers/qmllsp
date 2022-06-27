@@ -1,3 +1,1 @@
-help ls 
 
-ls -a

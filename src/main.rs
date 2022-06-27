@@ -3,6 +3,7 @@ use std::process::Command;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tree_sitter::Parser;
 #[allow(dead_code)]
 enum Type {
     Error,
@@ -37,7 +38,7 @@ impl LanguageServer for Backend {
             server_info: None,
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::INCREMENTAL,
+                    TextDocumentSyncKind::FULL,
                 )),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(false),
@@ -117,9 +118,16 @@ impl LanguageServer for Backend {
             .await;
     }
 
-    async fn did_change(&self, _: DidChangeTextDocumentParams) {
+    async fn did_change(&self, input: DidChangeTextDocumentParams) {
+        // create a parse
+        let mut parse = Parser::new();
+        parse.set_language(tree_sitter_qml::language()).unwrap();
+        //for message in &input.content_changes {
+        //    notify_send(&message.text, Type::Info);
+        //}
+
         self.client
-            .log_message(MessageType::INFO, "file changed!")
+            .log_message(MessageType::INFO, &format!("{:?}", input))
             .await;
     }
 
@@ -154,9 +162,7 @@ impl LanguageServer for Backend {
         notify_send("file closed", Type::Info);
     }
     async fn completion(&self, input: CompletionParams) -> Result<Option<CompletionResponse>> {
-        self.client
-            .log_message(MessageType::INFO, "Complete")
-            .await;
+        self.client.log_message(MessageType::INFO, "Complete").await;
         if let Some(contexts) = input.context {
             match contexts.trigger_character {
                 Some(completea) => match completea.as_str() {
@@ -262,7 +268,6 @@ impl LanguageServer for Backend {
 
 #[tokio::main]
 async fn main() {
-
     tracing_subscriber::fmt().init();
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
