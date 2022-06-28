@@ -41,27 +41,31 @@ struct Backend {
 //    }
 //}
 // it should return Option<Vec<Point,Point>>
-fn checkerror(input: tree_sitter::Node) -> Option<(tree_sitter::Point, tree_sitter::Point)> {
+
+fn checkerror(input: tree_sitter::Node) -> Option<Vec<(tree_sitter::Point, tree_sitter::Point)>> {
     if input.has_error() {
         if input.is_error() {
-            Some((input.start_position(), input.end_position()))
+            Some(vec![(input.start_position(), input.end_position())])
         } else {
             let mut course = input.walk();
             {
+                let mut output = vec![];
                 for node in input.children(&mut course) {
-                    let output = checkerror(node);
-                    if output.is_some() {
-                        return output;
+                    if let Some(mut tran) = checkerror(node) {
+                        output.append(&mut tran);
                     }
                 }
-                None
+                if output.is_empty() {
+                    None
+                } else {
+                    Some(output)
+                }
             }
         }
     } else {
         None
     }
 }
-
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
@@ -82,7 +86,6 @@ impl LanguageServer for Backend {
                     ]),
                     work_done_progress_options: Default::default(),
                     all_commit_characters: None,
-                    ..Default::default()
                 }),
                 execute_command_provider: Some(ExecuteCommandOptions {
                     commands: vec!["dummy.do_something".to_string()],
@@ -97,7 +100,6 @@ impl LanguageServer for Backend {
                 }),
                 ..ServerCapabilities::default()
             },
-            ..Default::default()
         })
     }
 
@@ -143,7 +145,39 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn did_open(&self, _: DidOpenTextDocumentParams) {
+    async fn did_open(&self, input: DidOpenTextDocumentParams) {
+        let mut parse = Parser::new();
+        parse.set_language(tree_sitter_qml::language()).unwrap();
+        let thetree = parse.parse(input.text_document.text.clone(), None);
+        if let Some(tree) = thetree {
+            let gammererror = checkerror(tree.root_node());
+            if let Some(diagnoses) = gammererror {
+                let mut pusheddiagnoses = vec![];
+                for (start, end) in diagnoses {
+                    let pointx = lsp_types::Position::new(start.row as u32, start.column as u32);
+                    let pointy = lsp_types::Position::new(end.row as u32, end.column as u32);
+                    let range = Range {
+                        start: pointx,
+                        end: pointy,
+                    };
+                    let diagnose = Diagnostic {
+                        range,
+                        severity: None,
+                        code: None,
+                        code_description: None,
+                        source: None,
+                        message: "gammererror".to_string(),
+                        related_information: None,
+                        tags: None,
+                        data: None,
+                    };
+                    pusheddiagnoses.push(diagnose);
+                }
+                self.client
+                    .publish_diagnostics(input.text_document.uri.clone(), pusheddiagnoses, Some(1))
+                    .await;
+            }
+        }
         self.client
             .log_message(MessageType::INFO, "file opened!")
             .await;
@@ -156,36 +190,39 @@ impl LanguageServer for Backend {
         let thetree = parse.parse(input.content_changes[0].text.clone(), None);
         if let Some(tree) = thetree {
             let gammererror = checkerror(tree.root_node());
-            if let Some((start, end)) = gammererror {
-                let pointx = lsp_types::Position::new(start.row as u32, start.column as u32);
-                let pointy = lsp_types::Position::new(end.row as u32, end.column as u32);
+            if let Some(diagnoses) = gammererror {
+                let mut pusheddiagnoses = vec![];
+                for (start, end) in diagnoses {
+                    let pointx = lsp_types::Position::new(start.row as u32, start.column as u32);
+                    let pointy = lsp_types::Position::new(end.row as u32, end.column as u32);
 
-                let range = Range {
-                    start: pointx,
-                    end: pointy,
-                };
-                let diagnose = Diagnostic {
-                    range,
-                    severity: None,
-                    code: None,
-                    code_description: None,
-                    source: None,
-                    message: "gammererror".to_string(),
-                    related_information: None,
-                    tags: None,
-                    data: None,
-                };
+                    let range = Range {
+                        start: pointx,
+                        end: pointy,
+                    };
+                    let diagnose = Diagnostic {
+                        range,
+                        severity: None,
+                        code: None,
+                        code_description: None,
+                        source: None,
+                        message: "gammererror".to_string(),
+                        related_information: None,
+                        tags: None,
+                        data: None,
+                    };
+                    pusheddiagnoses.push(diagnose);
+                }
                 self.client
-                    .publish_diagnostics(input.text_document.uri.clone(), vec![diagnose], Some(1))
+                    .publish_diagnostics(input.text_document.uri.clone(), pusheddiagnoses, Some(1))
                     .await;
+            } else {
+                self.client
+                    .publish_diagnostics(input.text_document.uri.clone(), vec![], None)
+                    .await;
+                //self.client.semantic_tokens_refresh().await.unwrap();
             }
-        } else {
-            self.client.semantic_tokens_refresh().await.unwrap();
         }
-        //for message in &input.content_changes {
-        //    notify_send(&message.text, Type::Info);
-        //}
-
         self.client
             .log_message(MessageType::INFO, &format!("{:?}", input))
             .await;

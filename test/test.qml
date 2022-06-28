@@ -1,3 +1,12 @@
-import Qt
+import Qt 
+import QtQuick
 
-A {}
+A {
+  id: window
+  B {
+    C {
+      id : window
+    }
+  }
+}
+
