@@ -1,10 +1,10 @@
 local configs = require("lspconfig.configs")
 local nvim_lsp = require("lspconfig")
 
-configs.nu_lsp = {
+configs.qmllsp = {
     default_config = {
-        cmd = { "./target/debug/nulsp" },
-        filetypes = {"nu"},
+        cmd = { "./target/debug/qmllsp" },
+        filetypes = {"qml"},
         root_dir = function(fname)
             return nvim_lsp.util.find_git_ancestor(fname)
         end,
@@ -14,4 +14,4 @@ configs.nu_lsp = {
         end
     }
 }
-nvim_lsp.nu_lsp.setup({})
+nvim_lsp.qmllsp.setup({})

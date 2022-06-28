@@ -1,9 +1,13 @@
 use serde_json::Value;
 use std::process::Command;
+//use std::sync::Arc;
+//use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tree_sitter::Parser;
+//use tree_sitter::Point;
+
 #[allow(dead_code)]
 enum Type {
     Error,
@@ -29,6 +33,33 @@ fn notify_send(input: &str, typeinput: Type) {
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    //    tree: Arc<Mutex<Option<Tree>>>,
+}
+//impl From<tree_sitter::Point> for Position {
+//    fn from(input: tree_sitter::Point) -> Self {
+//        Position { line: input.row as u32, character: input.column as u32 }
+//    }
+//}
+// it should return Option<Vec<Point,Point>>
+fn checkerror(input: tree_sitter::Node) -> Option<(tree_sitter::Point, tree_sitter::Point)> {
+    if input.has_error() {
+        if input.is_error() {
+            Some((input.start_position(), input.end_position()))
+        } else {
+            let mut course = input.walk();
+            {
+                for node in input.children(&mut course) {
+                    let output = checkerror(node);
+                    if output.is_some() {
+                        return output;
+                    }
+                }
+                None
+            }
+        }
+    } else {
+        None
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -122,6 +153,35 @@ impl LanguageServer for Backend {
         // create a parse
         let mut parse = Parser::new();
         parse.set_language(tree_sitter_qml::language()).unwrap();
+        let thetree = parse.parse(input.content_changes[0].text.clone(), None);
+        if let Some(tree) = thetree {
+            let gammererror = checkerror(tree.root_node());
+            if let Some((start, end)) = gammererror {
+                let pointx = lsp_types::Position::new(start.row as u32, start.column as u32);
+                let pointy = lsp_types::Position::new(end.row as u32, end.column as u32);
+
+                let range = Range {
+                    start: pointx,
+                    end: pointy,
+                };
+                let diagnose = Diagnostic {
+                    range,
+                    severity: None,
+                    code: None,
+                    code_description: None,
+                    source: None,
+                    message: "gammererror".to_string(),
+                    related_information: None,
+                    tags: None,
+                    data: None,
+                };
+                self.client
+                    .publish_diagnostics(input.text_document.uri.clone(), vec![diagnose], Some(1))
+                    .await;
+            }
+        } else {
+            self.client.semantic_tokens_refresh().await.unwrap();
+        }
         //for message in &input.content_changes {
         //    notify_send(&message.text, Type::Info);
         //}
@@ -274,4 +334,15 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend { client });
     Server::new(stdin, stdout, socket).serve(service).await;
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_gamma() {
+        let source = "import";
+        let mut parse = tree_sitter::Parser::new();
+        parse.set_language(tree_sitter_qml::language()).unwrap();
+        let tree = parse.parse(source, None).unwrap();
+        assert_eq!(tree.root_node().to_sexp(), "(source_file (ERROR))");
+    }
 }

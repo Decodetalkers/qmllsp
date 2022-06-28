@@ -392,6 +392,7 @@ dependencies = [
 name = "qmllsp"
 version = "0.1.0"
 dependencies = [
+ "lsp-types",
  "serde",
  "serde_json",
  "tokio",

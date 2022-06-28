@@ -1,4 +1,3 @@
 import Qt
 
-MainWindow {
-}
+A {}
