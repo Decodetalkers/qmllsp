@@ -361,6 +361,13 @@ impl LanguageServer for Backend {
             ])))
         }
     }
+    // TODO
+    async fn document_symbol(
+        &self,
+        _: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        Ok(None)
+    }
 }
 
 #[tokio::main]

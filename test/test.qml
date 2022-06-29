@@ -6,6 +6,10 @@ A {
   function input(c) {
     
   }
+  function whoami(e) {
+  }
+  function gamma(s) {
+  }
   B {
     C {
       id : window
