@@ -37,6 +37,57 @@
         ]
       }
     },
+    "qml_function": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "function"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "PREC",
+          "value": 1,
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "STRING",
+                "value": "()"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": "("
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "variables"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": ")"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "{"
+        },
+        {
+          "type": "STRING",
+          "value": "}"
+        }
+      ]
+    },
     "getimport": {
       "type": "SEQ",
       "members": [
@@ -76,6 +127,10 @@
       "type": "PATTERN",
       "value": "[a-zA-Z]+"
     },
+    "variables": {
+      "type": "PATTERN",
+      "value": "[a-zA-Z]+"
+    },
     "idname": {
       "type": "PATTERN",
       "value": "[a-zA-Z]+"
@@ -106,6 +161,10 @@
                   {
                     "type": "SYMBOL",
                     "name": "qmlwidget"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "qml_function"
                   }
                 ]
               }

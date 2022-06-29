@@ -11,6 +11,20 @@ module.exports = grammar({
 			$.qmlwidget,
 		)
 		),
+		qml_function: $ => seq(
+			"function",
+			$.identifier,
+			prec(1, choice(
+				"()",
+				seq(
+					"(",
+					$.variables,
+					")"
+				)
+			)),
+			"{",
+			"}"
+		),
 		// get the import
 		getimport: $ => seq(
 			"import",
@@ -23,6 +37,7 @@ module.exports = grammar({
 			))),
 		//identifier
 		identifier: $ => /[a-zA-Z]+/,
+		variables: $ => /[a-zA-Z]+/,
 		// idname like id, width and etc
 		idname: $ => /[a-zA-Z]+/,
 		qmlwidget: $ => seq(
@@ -33,6 +48,7 @@ module.exports = grammar({
 					choice(
 						$.widgetid,
 						$.qmlwidget,
+						$.qml_function
 					)
 				)
 			),

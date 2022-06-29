@@ -29,6 +29,25 @@
     "fields": {}
   },
   {
+    "type": "qml_function",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "variables",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "qmlwidget",
     "named": true,
     "fields": {},
@@ -38,6 +57,10 @@
       "types": [
         {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "qml_function",
           "named": true
         },
         {
@@ -71,6 +94,11 @@
     }
   },
   {
+    "type": "variables",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "widgetid",
     "named": true,
     "fields": {},
@@ -98,7 +126,23 @@
     }
   },
   {
+    "type": "(",
+    "named": false
+  },
+  {
+    "type": "()",
+    "named": false
+  },
+  {
+    "type": ")",
+    "named": false
+  },
+  {
     "type": ":",
+    "named": false
+  },
+  {
+    "type": "function",
     "named": false
   },
   {
