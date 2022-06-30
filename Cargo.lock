@@ -399,7 +399,7 @@ dependencies = [
  "tower-lsp",
  "tracing-subscriber",
  "tree-sitter",
- "tree_sitter_qml",
+ "tree-sitter-qml",
 ]
 
 [[package]]
@@ -740,8 +740,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree_sitter_qml"
-version = "0.1.0"
+name = "tree-sitter-qml"
+version = "0.0.1"
 dependencies = [
  "cc",
  "tree-sitter",

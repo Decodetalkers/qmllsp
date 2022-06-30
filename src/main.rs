@@ -1,13 +1,15 @@
 use serde_json::Value;
 use std::process::Command;
-//use std::sync::Arc;
-//use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tree_sitter::Parser;
 //use tree_sitter::Point;
-
+use std::collections::HashMap;
+mod gammer;
+use gammer::checkerror;
 #[allow(dead_code)]
 enum Type {
     Error,
@@ -33,6 +35,7 @@ fn notify_send(input: &str, typeinput: Type) {
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    buffers: Arc<Mutex<HashMap<lsp_types::Url, String>>>,
     //    tree: Arc<Mutex<Option<Tree>>>,
 }
 //impl From<tree_sitter::Point> for Position {
@@ -42,30 +45,7 @@ struct Backend {
 //}
 // it should return Option<Vec<Point,Point>>
 
-fn checkerror(input: tree_sitter::Node) -> Option<Vec<(tree_sitter::Point, tree_sitter::Point)>> {
-    if input.has_error() {
-        if input.is_error() {
-            Some(vec![(input.start_position(), input.end_position())])
-        } else {
-            let mut course = input.walk();
-            {
-                let mut output = vec![];
-                for node in input.children(&mut course) {
-                    if let Some(mut tran) = checkerror(node) {
-                        output.append(&mut tran);
-                    }
-                }
-                if output.is_empty() {
-                    None
-                } else {
-                    Some(output)
-                }
-            }
-        }
-    } else {
-        None
-    }
-}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
@@ -148,6 +128,12 @@ impl LanguageServer for Backend {
     async fn did_open(&self, input: DidOpenTextDocumentParams) {
         let mut parse = Parser::new();
         parse.set_language(tree_sitter_qml::language()).unwrap();
+        let uri = input.text_document.uri.clone();
+        let context = input.text_document.text.clone();
+        let mut storemap = self.buffers.lock().await;
+        if !storemap.contains_key(&uri) {
+            storemap.insert(uri, context);
+        }
         let thetree = parse.parse(input.text_document.text.clone(), None);
         if let Some(tree) = thetree {
             let gammererror = checkerror(tree.root_node());
@@ -186,6 +172,12 @@ impl LanguageServer for Backend {
     async fn did_change(&self, input: DidChangeTextDocumentParams) {
         // create a parse
         let mut parse = Parser::new();
+        let uri = input.text_document.uri.clone();
+        let context = input.content_changes[0].text.clone();
+        let mut storemap = self.buffers.lock().await;
+        if !storemap.contains_key(&uri) {
+            storemap.insert(uri, context);
+        }
         parse.set_language(tree_sitter_qml::language()).unwrap();
         let thetree = parse.parse(input.content_changes[0].text.clone(), None);
         if let Some(tree) = thetree {
@@ -246,6 +238,8 @@ impl LanguageServer for Backend {
         }))
     }
     async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
+
+        notify_send("Hovered", Type::Info);
         self.client.log_message(MessageType::INFO, "Hovered!").await;
         Ok(Some(Hover {
             contents: HoverContents::Scalar(MarkedString::String("Test".to_string())),
@@ -364,9 +358,20 @@ impl LanguageServer for Backend {
     // TODO
     async fn document_symbol(
         &self,
-        _: DocumentSymbolParams,
+        input: DocumentSymbolParams,
     ) -> Result<Option<DocumentSymbolResponse>> {
-        Ok(None)
+        let uri = input.text_document.uri.clone();
+        let storemap = self.buffers.lock().await;
+        notify_send("test", Type::Error);
+        match storemap.get(&uri) {
+            Some(context) => {
+                notify_send(context, Type::Error);
+                Ok(None)
+            }
+            None => Ok(None)
+        }
+        //self.client.send_request
+        //Ok(None)
     }
 }
 
@@ -376,7 +381,7 @@ async fn main() {
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
 
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend { client, buffers: Arc::new(Mutex::new(HashMap::new())) });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 #[cfg(test)]
