@@ -45,7 +45,6 @@ struct Backend {
 //}
 // it should return Option<Vec<Point,Point>>
 
-
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
@@ -131,9 +130,7 @@ impl LanguageServer for Backend {
         let uri = input.text_document.uri.clone();
         let context = input.text_document.text.clone();
         let mut storemap = self.buffers.lock().await;
-        if !storemap.contains_key(&uri) {
-            storemap.insert(uri, context);
-        }
+        storemap.entry(uri).or_insert(context);
         let thetree = parse.parse(input.text_document.text.clone(), None);
         if let Some(tree) = thetree {
             let gammererror = checkerror(tree.root_node());
@@ -175,9 +172,7 @@ impl LanguageServer for Backend {
         let uri = input.text_document.uri.clone();
         let context = input.content_changes[0].text.clone();
         let mut storemap = self.buffers.lock().await;
-        if !storemap.contains_key(&uri) {
-            storemap.insert(uri, context);
-        }
+        storemap.insert(uri, context);
         parse.set_language(tree_sitter_qml::language()).unwrap();
         let thetree = parse.parse(input.content_changes[0].text.clone(), None);
         if let Some(tree) = thetree {
@@ -238,7 +233,6 @@ impl LanguageServer for Backend {
         }))
     }
     async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
-
         notify_send("Hovered", Type::Info);
         self.client.log_message(MessageType::INFO, "Hovered!").await;
         Ok(Some(Hover {
@@ -323,36 +317,24 @@ impl LanguageServer for Backend {
                         },
                     ]))),
                 },
-                _ => Ok(Some(CompletionResponse::Array(vec![
-                    CompletionItem {
-                        label: "help".to_string(),
-                        kind: Some(CompletionItemKind::METHOD),
-                        detail: Some("Dispaly help information about commands".to_string()),
-                        ..CompletionItem::default()
-                    },
-                    CompletionItem {
-                        label: "char".to_string(),
-                        kind: Some(CompletionItemKind::METHOD),
-                        detail: Some("Output special character (eg., 'newline')".to_string()),
-                        ..CompletionItem::default()
-                    },
-                ]))),
+                _ => {
+                    let uri = input.text_document_position.text_document.uri;
+                    let storemap = self.buffers.lock().await;
+                    notify_send("test", Type::Error);
+                    match storemap.get(&uri) {
+                        Some(context) => {
+                            let mut parse = Parser::new();
+                            parse.set_language(tree_sitter_qml::language()).unwrap();
+                            let thetree = parse.parse(context.clone(), None);
+                            let tree = thetree.unwrap();
+                            Ok(gammer::getcoplete(tree.root_node(), context, "window"))
+                        }
+                        None => Ok(None),
+                    }
+                } 
             }
         } else {
-            Ok(Some(CompletionResponse::Array(vec![
-                CompletionItem {
-                    label: "help".to_string(),
-                    kind: Some(CompletionItemKind::METHOD),
-                    detail: Some("Dispaly help information about commands".to_string()),
-                    ..CompletionItem::default()
-                },
-                CompletionItem {
-                    label: "char".to_string(),
-                    kind: Some(CompletionItemKind::METHOD),
-                    detail: Some("Output special character (eg., 'newline')".to_string()),
-                    ..CompletionItem::default()
-                },
-            ])))
+            Ok(None)
         }
     }
     // TODO
@@ -368,7 +350,7 @@ impl LanguageServer for Backend {
                 notify_send(context, Type::Error);
                 Ok(None)
             }
-            None => Ok(None)
+            None => Ok(None),
         }
         //self.client.send_request
         //Ok(None)
@@ -381,11 +363,15 @@ async fn main() {
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
 
-    let (service, socket) = LspService::new(|client| Backend { client, buffers: Arc::new(Mutex::new(HashMap::new())) });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        buffers: Arc::new(Mutex::new(HashMap::new())),
+    });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 #[cfg(test)]
 mod tests {
+    use tree_sitter::TreeCursor;
     #[test]
     fn test_gamma() {
         let source = "import";
@@ -393,5 +379,49 @@ mod tests {
         parse.set_language(tree_sitter_qml::language()).unwrap();
         let tree = parse.parse(source, None).unwrap();
         assert_eq!(tree.root_node().to_sexp(), "(source_file (ERROR))");
+    }
+    //fn recurse<'a>(node: Node<'a>) {
+    //    println!(
+    //        "{}:{}",
+    //        node.walk().field_name().unwrap_or("null"),
+    //        node.kind()
+    //    );
+    //    let mut course = node.walk();
+    //    node.children(&mut course).for_each(recurse);
+    //}
+    fn walk<'a>(cursor: &mut TreeCursor<'a>) {
+        loop {
+            println!(
+                "it is {}:{}",
+                cursor.field_name().unwrap_or("null"),
+                cursor.node().kind()
+            );
+
+            if !cursor.goto_first_child() {
+                if !cursor.goto_next_sibling() {
+                    loop {
+                        if !cursor.goto_parent() {
+                            return;
+                        }
+
+                        if cursor.goto_next_sibling() {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn test_id() {
+        let source = "A { id : window }";
+        let mut parse = tree_sitter::Parser::new();
+        parse.set_language(tree_sitter_qml::language()).unwrap();
+        let tree = parse.parse(source, None).unwrap();
+        let root = tree.root_node();
+        walk(&mut root.walk());
+
+        //let node = root.child_by_field_name("source_file");
+        //assert_eq!(node.unwrap().to_sexp(), "(source_file (ERROR))");
     }
 }
