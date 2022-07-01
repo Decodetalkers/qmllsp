@@ -35,20 +35,44 @@ module.exports = grammar({
 				),
 				$.identifier
 			))),
+		winid: $ => seq(
+			"id",
+			":",
+			$.identifier
+		),
 		//identifier
 		identifier: $ => /[a-zA-Z]+/,
-		variables: $ => /[a-zA-Z]+/,
+		variables: $ => choice(
+			/[a-zA-Z]+/,
+			seq(
+				"\"",
+				/[a-zA-Z]+/,
+				"\""
+			)
+		),
 		// idname like id, width and etc
-		idname: $ => /[a-zA-Z]+/,
+		// idname: $ => /[a-zA-Z]+/,
 		qmlwidget: $ => seq(
 			$.identifier,
 			seq(
 				'{',
-				repeat(
-					choice(
-						$.widgetid,
-						$.qmlwidget,
-						$.qml_function
+				choice(
+					seq(
+						$.winid,
+						repeat(
+							choice(
+								$.widgetid,
+								$.qmlwidget,
+								$.qml_function
+							)
+						)
+					),
+					repeat(
+						choice(
+							$.widgetid,
+							$.qmlwidget,
+							$.qml_function
+						)
 					)
 				)
 			),
@@ -59,7 +83,7 @@ module.exports = grammar({
 			$.identifier,
 			":",
 			choice(
-				$.idname,
+				$.variables,
 				$.number,
 				$.qmlwidget,
 			)

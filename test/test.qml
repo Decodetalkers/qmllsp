@@ -2,6 +2,8 @@ import Qt
 import QtQuick
 
 A {
-  function a () {
-  }
+	id : window
+	name: "highlight"
+	function a (a) {
+	}
 }

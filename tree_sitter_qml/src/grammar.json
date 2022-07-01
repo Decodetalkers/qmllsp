@@ -123,17 +123,52 @@
         }
       ]
     },
+    "winid": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "id"
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        }
+      ]
+    },
     "identifier": {
       "type": "PATTERN",
       "value": "[a-zA-Z]+"
     },
     "variables": {
-      "type": "PATTERN",
-      "value": "[a-zA-Z]+"
-    },
-    "idname": {
-      "type": "PATTERN",
-      "value": "[a-zA-Z]+"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "PATTERN",
+          "value": "[a-zA-Z]+"
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "\""
+            },
+            {
+              "type": "PATTERN",
+              "value": "[a-zA-Z]+"
+            },
+            {
+              "type": "STRING",
+              "value": "\""
+            }
+          ]
+        }
+      ]
     },
     "qmlwidget": {
       "type": "SEQ",
@@ -150,24 +185,58 @@
               "value": "{"
             },
             {
-              "type": "REPEAT",
-              "content": {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "SYMBOL",
-                    "name": "widgetid"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "qmlwidget"
-                  },
-                  {
-                    "type": "SYMBOL",
-                    "name": "qml_function"
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "winid"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "widgetid"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "qmlwidget"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "qml_function"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "REPEAT",
+                  "content": {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "widgetid"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "qmlwidget"
+                      },
+                      {
+                        "type": "SYMBOL",
+                        "name": "qml_function"
+                      }
+                    ]
                   }
-                ]
-              }
+                }
+              ]
             }
           ]
         },
@@ -193,7 +262,7 @@
           "members": [
             {
               "type": "SYMBOL",
-              "name": "idname"
+              "name": "variables"
             },
             {
               "type": "SYMBOL",
